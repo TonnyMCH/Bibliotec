@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Biblioteca de Textos</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#4a4a4a">
+<style>
+body{margin:0;font-family:Georgia,serif;display:flex;height:100vh}
+#sidebar{width:280px;background:#f0f0f0;border-right:1px solid #ccc;overflow-y:auto;padding:10px}
+#content{flex:1;display:flex;flex-direction:column}
+#reader{flex:1;padding:40px;max-width:800px;margin:auto;overflow-y:auto;line-height:1.8;font-size:20px;white-space:pre-wrap}
+.book{background:#fff;border:1px solid #ccc;padding:8px;margin:5px 0;cursor:pointer}
+textarea,input{width:100%;box-sizing:border-box}
+button{margin:2px;padding:8px}
+#editor{padding:10px;border-bottom:1px solid #ccc}
+</style>
+</head>
+<body>
+<div id="sidebar">
+<h2>📚 Biblioteca</h2>
+<input id="buscar" placeholder="Buscar...">
+<div id="lista"></div>
+</div>
+
+<div id="content">
+<div id="editor">
+<input id="titulo" placeholder="Título">
+<textarea id="texto" rows="6" placeholder="Escribe o pega texto"></textarea><br>
+<button onclick="guardar()">💾 Guardar</button>
+<button onclick="nuevo()">📄 Nuevo</button>
+<button onclick="eliminarLibro()">🗑 Eliminar</button>
+<button onclick="aumentar()">A+</button>
+<button onclick="disminuir()">A-</button>
+<button onclick="exportarBiblioteca()">💾 Respaldar</button>
+<button onclick="document.getElementById('importarTxt').click()">📂 Importar TXT</button>
+<button onclick="document.getElementById('restaurarBiblioteca').click()">🔄 Restaurar</button>
+<input type="file" id="importarTxt" accept=".txt" hidden>
+<input type="file" id="restaurarBiblioteca" accept=".json" hidden>
+</div>
+<div id="reader">Seleccione un texto para leer.</div>
+</div>
+
+<script>
+let biblioteca=JSON.parse(localStorage.getItem("biblioteca"))||[];
+let actual=null;
+let fontSize=20;
+
+function mostrarLista(){
+ const f=document.getElementById("buscar").value.toLowerCase();
+ const lista=document.getElementById("lista");
+ lista.innerHTML="";
+ biblioteca.forEach((b,i)=>{
+  if(!b.titulo.toLowerCase().includes(f)) return;
+  let d=document.createElement("div");
+  d.className="book";
+  d.textContent=b.titulo;
+  d.onclick=()=>abrir(i);
+  lista.appendChild(d);
+ });
+}
+
+function guardar(){
+ const titulo=document.getElementById("titulo").value.trim();
+ const texto=document.getElementById("texto").value;
+ if(!titulo) return alert("Ingrese un título");
+ if(actual===null) biblioteca.push({titulo,texto});
+ else biblioteca[actual]={titulo,texto};
+ localStorage.setItem("biblioteca",JSON.stringify(biblioteca));
+ mostrarLista();
+}
+
+function abrir(i){
+ actual=i;
+ titulo.value=biblioteca[i].titulo;
+ texto.value=biblioteca[i].texto;
+ reader.textContent=biblioteca[i].texto;
+}
+
+function nuevo(){
+ actual=null;
+ titulo.value="";
+ texto.value="";
+}
+
+function eliminarLibro(){
+ if(actual===null) return;
+ biblioteca.splice(actual,1);
+ localStorage.setItem("biblioteca",JSON.stringify(biblioteca));
+ actual=null;
+ mostrarLista();
+ reader.textContent="Seleccione un texto para leer.";
+}
+
+function aumentar(){fontSize+=2;reader.style.fontSize=fontSize+"px";}
+function disminuir(){fontSize=Math.max(10,fontSize-2);reader.style.fontSize=fontSize+"px";}
+
+buscar.addEventListener("input",mostrarLista);
+
+importarTxt.addEventListener("change",e=>{
+ const a=e.target.files[0]; if(!a) return;
+ const r=new FileReader();
+ r.onload=ev=>{
+  const nombre=a.name.replace(/\.txt$/i,'');
+  titulo.value=nombre;
+  texto.value=ev.target.result;
+  biblioteca.push({titulo:nombre,texto:ev.target.result});
+  localStorage.setItem("biblioteca",JSON.stringify(biblioteca));
+  mostrarLista();
+ };
+ r.readAsText(a,"UTF-8");
+});
+
+function exportarBiblioteca(){
+ const blob=new Blob([JSON.stringify(biblioteca,null,2)],{type:"application/json"});
+ const a=document.createElement("a");
+ a.href=URL.createObjectURL(blob);
+ a.download="Biblioteca.json";
+ a.click();
+}
+
+restaurarBiblioteca.addEventListener("change",e=>{
+ const a=e.target.files[0]; if(!a) return;
+ const r=new FileReader();
+ r.onload=ev=>{
+  biblioteca=JSON.parse(ev.target.result);
+  localStorage.setItem("biblioteca",JSON.stringify(biblioteca));
+  mostrarLista();
+ };
+ r.readAsText(a);
+});
+
+if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js");}
+mostrarLista();
+</script>
+</body>
+</html>
